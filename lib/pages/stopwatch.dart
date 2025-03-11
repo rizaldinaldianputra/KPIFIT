@@ -1,0 +1,93 @@
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:kpifit/routing/route.dart';
+// ignore: depend_on_referenced_packages
+import 'package:stop_watch_timer/stop_watch_timer.dart';
+
+class StopWatchPage extends StatefulWidget {
+  const StopWatchPage({super.key});
+
+  @override
+  StopWatchPageState createState() => StopWatchPageState();
+}
+
+class StopWatchPageState extends State<StopWatchPage> {
+  final StopWatchTimer _stopWatchTimer = StopWatchTimer();
+  final _isHours = true;
+
+  @override
+  void dispose() {
+    _stopWatchTimer.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Stopwatch')),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            StreamBuilder<int>(
+              stream: _stopWatchTimer.rawTime,
+              initialData: _stopWatchTimer.rawTime.value,
+              builder: (context, snap) {
+                final value = snap.data!;
+                final displayTime =
+                    StopWatchTimer.getDisplayTime(value, hours: _isHours);
+                return Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    SizedBox(
+                      width: 300,
+                      height: 300,
+                      child: CircularProgressIndicator(
+                        value: (value % 60000) / 60000,
+                        strokeWidth: 8,
+                        backgroundColor: Colors.grey[300],
+                        color: Colors.blue,
+                      ),
+                    ),
+                    Text(
+                      displayTime,
+                      style: const TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 30),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.play_arrow,
+                      size: 40, color: Colors.blue),
+                  onPressed: _stopWatchTimer.onStartTimer,
+                ),
+                const SizedBox(width: 20),
+                IconButton(
+                  icon: const Icon(Icons.stop, size: 40, color: Colors.red),
+                  onPressed: () {
+                    _stopWatchTimer.onStopTimer();
+                    context.goNamed('map');
+                  },
+                ),
+                const SizedBox(width: 20),
+                IconButton(
+                  icon:
+                      const Icon(Icons.refresh, size: 40, color: Colors.green),
+                  onPressed: _stopWatchTimer.onResetTimer,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

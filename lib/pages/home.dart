@@ -4,36 +4,26 @@ import 'package:kpifit/config/colors.dart';
 import 'package:kpifit/pages/account.dart';
 import 'package:kpifit/pages/beranda.dart';
 import 'package:kpifit/pages/workout.dart';
+import 'package:kpifit/riverpod/home.dart';
 
-class HomePage extends ConsumerStatefulWidget {
+class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
   @override
-  ConsumerState<HomePage> createState() => _HomePageState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currentIndex = ref.watch(homePageProvider);
 
-class _HomePageState extends ConsumerState<HomePage> {
-  int _currentIndex = 0;
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _currentIndex = index;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final List<Widget> pages = [
-      const BerandaPage(),
-      const WorkOutPage(),
-      const AccountPage(),
+    final List<Widget> pages = const [
+      BerandaPage(),
+      WorkOutPage(),
+      AccountPage(),
     ];
 
     return Scaffold(
-      body: pages[_currentIndex],
+      body: pages[currentIndex],
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: _onItemTapped,
+        currentIndex: currentIndex,
+        onTap: (index) => ref.read(homePageProvider.notifier).setPage(index),
         selectedItemColor: primaryColor,
         unselectedItemColor: Colors.grey,
         items: const [

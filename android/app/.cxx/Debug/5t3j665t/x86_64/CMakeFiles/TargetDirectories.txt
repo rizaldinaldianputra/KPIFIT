@@ -1,0 +1,2 @@
+/Users/sinar12/Documents/project/kpifit/android/app/.cxx/Debug/5t3j665t/x86_64/CMakeFiles/edit_cache.dir
+/Users/sinar12/Documents/project/kpifit/android/app/.cxx/Debug/5t3j665t/x86_64/CMakeFiles/rebuild_cache.dir

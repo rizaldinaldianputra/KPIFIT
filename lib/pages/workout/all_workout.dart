@@ -20,7 +20,7 @@ class _AllWorkoutPageState extends ConsumerState<AllWorkoutPage> {
         child: ListView.builder(
           physics: const NeverScrollableScrollPhysics(),
           shrinkWrap: true,
-          itemCount: 2,
+          itemCount: 1,
           itemBuilder: (context, index) {
             return Container(
               padding: const EdgeInsets.all(8),

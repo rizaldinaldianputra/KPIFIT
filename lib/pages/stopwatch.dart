@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:kpifit/models/olahraga.dart';
 import 'package:kpifit/routing/route.dart';
 // ignore: depend_on_referenced_packages
 import 'package:stop_watch_timer/stop_watch_timer.dart';
 
 class StopWatchPage extends StatefulWidget {
-  const StopWatchPage({super.key});
+  final SportModel sportModel;
+  const StopWatchPage({super.key, required this.sportModel});
 
   @override
   StopWatchPageState createState() => StopWatchPageState();
@@ -21,6 +23,7 @@ class StopWatchPageState extends State<StopWatchPage> {
     super.dispose();
   }
 
+  String? timer;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -36,6 +39,12 @@ class StopWatchPageState extends State<StopWatchPage> {
                 final value = snap.data!;
                 final displayTime =
                     StopWatchTimer.getDisplayTime(value, hours: _isHours);
+
+                final minutes = (value ~/ 60000);
+                final seconds = ((value % 60000) ~/ 1000);
+
+                timer = '$minutes Menit $seconds Detik';
+
                 return Stack(
                   alignment: Alignment.center,
                   children: [
@@ -74,7 +83,9 @@ class StopWatchPageState extends State<StopWatchPage> {
                   icon: const Icon(Icons.stop, size: 40, color: Colors.red),
                   onPressed: () {
                     _stopWatchTimer.onStopTimer();
-                    context.goNamed('map');
+                    context.goNamed('map',
+                        queryParameters: {'timer': timer},
+                        extra: widget.sportModel);
                   },
                 ),
                 const SizedBox(width: 20),

@@ -7,6 +7,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:hexcolor/hexcolor.dart';
 import 'package:intl/intl.dart';
 import 'package:kpifit/config/colors.dart';
+import 'package:kpifit/models/olahraga.dart';
+import 'package:kpifit/service/services.dart';
 
 class BerandaPage extends ConsumerStatefulWidget {
   const BerandaPage({super.key});
@@ -20,6 +22,7 @@ class _BerandaPageState extends ConsumerState<BerandaPage> {
 
   @override
   void initState() {
+    getOlahraga();
     super.initState();
     _updateDateTime();
   }
@@ -72,6 +75,19 @@ class _BerandaPageState extends ConsumerState<BerandaPage> {
       return Colors.deepOrange; // Sore
     } else {
       return Colors.blueGrey; // Malam
+    }
+  }
+
+  List<SportModel> list = [];
+
+  Future<void> getOlahraga() async {
+    try {
+      List<SportModel> result = await CoreService(context).fetchOlahragaList();
+      setState(() {
+        list = result;
+      });
+    } catch (e) {
+      print("Error: $e");
     }
   }
 
@@ -241,11 +257,14 @@ class _BerandaPageState extends ConsumerState<BerandaPage> {
                   crossAxisSpacing: 12,
                   mainAxisSpacing: 12,
                 ),
-                itemCount: 10,
+                itemCount: list.length,
                 itemBuilder: (context, index) {
                   return GestureDetector(
                     onTap: () {
-                      context.goNamed('stopwatch');
+                      SportModel sportModel = SportModel();
+                      sportModel.id = '2';
+                      sportModel.nama = 'Basket Ball';
+                      context.goNamed('stopwatch', extra: sportModel);
                     },
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,

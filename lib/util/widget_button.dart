@@ -14,7 +14,8 @@ Widget button(String title, VoidCallback onTap, Color color) {
       child: Center(
         child: Text(
           title,
-          style: const TextStyle(color: Colors.white, fontSize: 14),
+          style: TextStyle(
+              color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
         ),
       ),
     ),

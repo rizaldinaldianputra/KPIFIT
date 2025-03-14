@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hexcolor/hexcolor.dart';
 import 'package:kpifit/config/colors.dart';
+import 'package:kpifit/service/services.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -17,16 +18,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final TextEditingController _passwordController = TextEditingController();
   bool _isPasswordObscure = false;
   bool isLoading = false;
+  late CoreService coreService;
 
-  Future<void> doLogin(String email, String password) async {
-    setState(() {
-      isLoading = true;
-    });
-    await Future.delayed(Duration(seconds: 2));
-    setState(() {
-      isLoading = false;
-    });
-    context.goNamed('home');
+  @override
+  void initState() {
+    coreService = CoreService(context);
+    super.initState();
   }
 
   @override
@@ -157,10 +154,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     onTap: isLoading
                         ? null
                         : () async {
-                            await doLogin(
-                              _emailController.text,
-                              _passwordController.text,
-                            );
+                            // await doLogin(
+                            //   _emailController.text,
+                            //   _passwordController.text,
+                            // );
+                            context.goNamed('home');
                           },
                     child: Container(
                       height: 50,
@@ -197,5 +195,18 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         ],
       ),
     );
+  }
+
+  doLogin(String username, String passwrod) {
+    try {
+      setState(() {
+        isLoading = true;
+      });
+      coreService.login(username, passwrod, context);
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
   }
 }

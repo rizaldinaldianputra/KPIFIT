@@ -7,13 +7,18 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:hive/hive.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:kpifit/config/colors.dart';
+import 'package:kpifit/databases/hive.dart';
+import 'package:kpifit/models/olahraga.dart';
+import 'package:kpifit/models/workout.dart';
 import 'package:kpifit/routing/route.dart';
 import 'package:kpifit/util/widget_button.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:path_provider/path_provider.dart';
 
 class MapPage extends StatefulWidget {
-  const MapPage({super.key});
+  final String timer;
+  final SportModel sportModel;
+  const MapPage({super.key, required this.timer, required this.sportModel});
 
   @override
   State<MapPage> createState() => _MapPageState();
@@ -33,6 +38,7 @@ class _MapPageState extends State<MapPage> {
   }
 
   Future<void> _initialize() async {
+    await HiveService.init();
     await _initHive();
     await _getCurrentLocation();
     _loadImages();
@@ -46,7 +52,7 @@ class _MapPageState extends State<MapPage> {
 
   Future<void> _loadImages() async {
     final storedImages = _imageBox.get('photos', defaultValue: []);
-    if (storedImages != null) {
+    if (storedImages is List) {
       setState(() {
         _images =
             List<String>.from(storedImages).map((path) => File(path)).toList();
@@ -64,33 +70,31 @@ class _MapPageState extends State<MapPage> {
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) return;
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        return;
+      }
     }
-
-    if (permission == LocationPermission.deniedForever) return;
 
     Position position = await Geolocator.getCurrentPosition();
     setState(() {
       _currentLocation = LatLng(position.latitude, position.longitude);
     });
-
     _mapController.move(_currentLocation!, 15.0);
   }
 
   Future<void> _pickImage() async {
     final XFile? image = await _picker.pickImage(source: ImageSource.camera);
     if (image != null) {
-      final File imageFile = File(image.path);
       setState(() {
-        _images.add(imageFile);
+        _images.add(File(image.path));
       });
       _saveImageToHive();
     }
   }
 
   void _saveImageToHive() {
-    final List<String> paths = _images.map((img) => img.path).toList();
-    _imageBox.put('photos', paths);
+    _imageBox.put('photos', _images.map((img) => img.path).toList());
   }
 
   void _deleteImage(int index) {
@@ -116,7 +120,8 @@ class _MapPageState extends State<MapPage> {
                         mapController: _mapController,
                         options: MapOptions(
                           initialZoom: 15.0,
-                          initialCenter: _currentLocation!,
+                          initialCenter: _currentLocation ??
+                              LatLng(-6.2088, 106.8456), // Default ke Jakarta
                         ),
                         children: [
                           TileLayer(
@@ -125,20 +130,21 @@ class _MapPageState extends State<MapPage> {
                             userAgentPackageName:
                                 'dev.fleaflet.flutter_map.example',
                           ),
-                          MarkerLayer(
-                            markers: [
-                              Marker(
-                                point: _currentLocation!,
-                                width: 50,
-                                height: 50,
-                                child: const Icon(
-                                  Icons.location_on,
-                                  color: Colors.red,
-                                  size: 40,
+                          if (_currentLocation != null)
+                            MarkerLayer(
+                              markers: [
+                                Marker(
+                                  point: _currentLocation!,
+                                  width: 50,
+                                  height: 50,
+                                  child: const Icon(
+                                    Icons.location_on,
+                                    color: Colors.red,
+                                    size: 40,
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
+                              ],
+                            ),
                         ],
                       ),
               ),
@@ -178,7 +184,7 @@ class _MapPageState extends State<MapPage> {
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
                         Text(
-                          'Basket Ball',
+                          widget.sportModel.nama ?? '',
                           style: GoogleFonts.inter(
                             fontWeight: FontWeight.w500,
                             fontSize: 14,
@@ -186,7 +192,7 @@ class _MapPageState extends State<MapPage> {
                           ),
                         ),
                         Text(
-                          '7 Maret 2025 07:45',
+                          widget.sportModel.gif ?? '',
                           style: GoogleFonts.inter(
                             fontWeight: FontWeight.w500,
                             fontSize: 12,
@@ -194,7 +200,7 @@ class _MapPageState extends State<MapPage> {
                           ),
                         ),
                         Text(
-                          '20  Menit 15 detik',
+                          widget.timer,
                           style: GoogleFonts.inter(
                             fontWeight: FontWeight.w500,
                             fontSize: 12,
@@ -269,14 +275,24 @@ class _MapPageState extends State<MapPage> {
           ),
         ],
       ),
-      bottomNavigationBar:
-          button('Simpan', () => context.goNamed('home'), primaryColor),
+      bottomNavigationBar: button('Simpan', () async {
+        final sportData = WorkoutModel(
+          tanggal: DateTime.now().toString(),
+          lokasi: 'Bogor',
+          sport: widget.sportModel,
+          timer: widget.timer,
+          latitude: _currentLocation?.latitude ?? 0.0,
+          longitude: _currentLocation?.longitude ?? 0.0,
+          imagePaths: _images.map((e) => e.path).toList(),
+        );
+
+        await HiveService.saveWorkoutData(sportData);
+        context.goNamed('home');
+      }, primaryColor),
       floatingActionButton: FloatingActionButton(
-          child: Icon(
-            Icons.camera_alt,
-            color: Colors.black,
-          ),
-          onPressed: _pickImage),
+        child: const Icon(Icons.camera_alt, color: Colors.black),
+        onPressed: _pickImage,
+      ),
     );
   }
 }

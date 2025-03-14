@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:kpifit/databases/hive.dart';
 import 'package:kpifit/pages/workout/all_workout.dart';
 import 'package:kpifit/pages/workout/pending_workout.dart';
 
@@ -20,9 +21,14 @@ class _WorkOutPageState extends ConsumerState<WorkOutPage>
     _tabController = TabController(length: 2, vsync: this);
   }
 
+  Future<void> _initialize() async {
+    await HiveService.init();
+  }
+
   @override
   void dispose() {
     _tabController.dispose();
+    _initialize();
     super.dispose();
   }
 

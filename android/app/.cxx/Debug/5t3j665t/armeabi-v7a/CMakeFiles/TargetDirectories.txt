@@ -1,0 +1,2 @@
+/Users/sinar12/Documents/project/kpifit/android/app/.cxx/Debug/5t3j665t/armeabi-v7a/CMakeFiles/edit_cache.dir
+/Users/sinar12/Documents/project/kpifit/android/app/.cxx/Debug/5t3j665t/armeabi-v7a/CMakeFiles/rebuild_cache.dir

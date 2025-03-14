@@ -40,34 +40,15 @@ class CommonService {
         }
         if (error.response!.statusCode == 403 ||
             error.response!.statusCode == 401) {
-          // Hapus token jika tidak valid
-          final SharedPreferences sharedPreferences =
-              await SharedPreferences.getInstance();
-          await sharedPreferences.remove("user");
-          await sharedPreferences.remove("token");
-
-          // Navigasi ke halaman login
-          GoRouter.of(context).goNamed('login');
-
           notifikasiFailed(error.response!.statusCode == 403
               ? error.response?.data["message"]
               : error.response?.data["message"]);
           return errorInterceptor.resolve(error.response!);
         } else {
-          String message = error.response!.requestOptions.path;
-
-          if (message == 'https://devapp.ti-asia.com/authenticate') {
-            notifikasiAuth(error.response?.data["message"] ?? "Unknown Error");
-          } else {
-            notifikasiFailed(
-                error.response?.data["message"] ?? "Unknown Error");
-          }
-
           return errorInterceptor.resolve(error.response!);
         }
       },
       onRequest: (request, requestInterceptor) async {
-        // Tambahkan token ke header permintaan
         final SharedPreferences sharedPreferences =
             await SharedPreferences.getInstance();
         final String? token = sharedPreferences.getString("token");

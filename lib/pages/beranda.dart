@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:hexcolor/hexcolor.dart';
 import 'package:intl/intl.dart';
 import 'package:kpifit/config/colors.dart';
+import 'package:kpifit/databases/hive.dart';
 import 'package:kpifit/models/aktifitas.dart';
 import 'package:kpifit/models/olahraga.dart';
 import 'package:kpifit/models/user.dart';
@@ -13,7 +14,8 @@ import 'package:kpifit/service/services.dart';
 import 'package:kpifit/util/function.dart';
 
 class BerandaPage extends ConsumerStatefulWidget {
-  const BerandaPage({super.key});
+  final UserModel? userModel;
+  const BerandaPage({super.key, required this.userModel});
 
   @override
   ConsumerState<ConsumerStatefulWidget> createState() => _BerandaPageState();
@@ -21,24 +23,26 @@ class BerandaPage extends ConsumerStatefulWidget {
 
 class _BerandaPageState extends ConsumerState<BerandaPage> {
   String formattedDateTime = '';
-  Future<UserModel>? userProfile;
-  List<SportModel> list = [];
+  List<SportModel> listOlahRaga = [];
   List<AktivitasModel> listAktifis = [];
-
-  UserModel? userModel;
+  Timer? _timer; // Tambahkan referensi timer
 
   @override
   void initState() {
     super.initState();
-    userProfile = CoreService(context).myProfile();
-    getOlahraga();
-    getMyProfile();
+    getSport();
+
     getAktifitas();
     _updateDateTime();
   }
 
+  void dispose() {
+    _timer?.cancel(); // Batalkan timer saat widget dihapus
+    super.dispose();
+  }
+
   void _updateDateTime() {
-    Timer.periodic(const Duration(seconds: 1), (timer) {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
       setState(() {
         formattedDateTime =
@@ -47,33 +51,20 @@ class _BerandaPageState extends ConsumerState<BerandaPage> {
     });
   }
 
-  Future<void> getOlahraga() async {
-    try {
-      List<SportModel> result = await CoreService(context).fetchOlahragaList();
-      if (mounted) {
-        setState(() => list = result);
-      }
-    } catch (e) {
-      debugPrint("Error: $e");
+  Future<void> getSport() async {
+    final data = await HiveService.loadSportData();
+    if (data != null) {
+      setState(() {
+        listOlahRaga = data.map((e) => e as SportModel).toList();
+      });
     }
   }
 
   Future<void> getAktifitas() async {
     try {
-      List<AktivitasModel> result = await CoreService(context).fetchAktifitas();
+      List<AktivitasModel> result = await HiveService.loadWorkoutData();
       if (mounted) {
         setState(() => listAktifis = result);
-      }
-    } catch (e) {
-      debugPrint("Error: $e");
-    }
-  }
-
-  Future<void> getMyProfile() async {
-    try {
-      UserModel? result = await CoreService(context).myProfile();
-      if (mounted) {
-        setState(() => userModel = result);
       }
     } catch (e) {
       debugPrint("Error: $e");
@@ -105,7 +96,6 @@ class _BerandaPageState extends ConsumerState<BerandaPage> {
       body: RefreshIndicator(
         color: primaryColor,
         onRefresh: () async {
-          getOlahraga();
           getAktifitas();
         },
         child: ListView(
@@ -143,22 +133,13 @@ class _BerandaPageState extends ConsumerState<BerandaPage> {
                       fontSize: 24,
                       color: Colors.white,
                     )),
-                FutureBuilder<UserModel>(
-                  future: userProfile,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Text('Loading...',
-                          style: TextStyle(color: Colors.white));
-                    }
-                    return Text(snapshot.data?.nama ?? '',
-                        style: GoogleFonts.inter(
-                          fontWeight: FontWeight.w400,
-                          fontStyle: FontStyle.italic,
-                          fontSize: 14,
-                          color: Colors.white,
-                        ));
-                  },
-                ),
+                Text(widget.userModel?.nama ?? '',
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.w400,
+                      fontStyle: FontStyle.italic,
+                      fontSize: 14,
+                      color: Colors.white,
+                    ))
               ],
             ),
           ),
@@ -250,9 +231,10 @@ class _BerandaPageState extends ConsumerState<BerandaPage> {
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
         ),
-        itemCount: list.length,
+        itemCount: listOlahRaga.length,
         itemBuilder: (context, index) {
-          final data = list[index];
+          final data = listOlahRaga[index];
+
           return GestureDetector(
             onTap: () {
               context.goNamed('stopwatch', extra: data);
@@ -261,20 +243,20 @@ class _BerandaPageState extends ConsumerState<BerandaPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Visibility(
-                  visible:
-                      list[index].gif != null && list[index].gif!.isNotEmpty,
+                  visible: listOlahRaga[index].gif != null &&
+                      listOlahRaga[index].gif!.isNotEmpty,
                   child: Image.network(
-                    list[index].gif!,
+                    listOlahRaga[index].gif!,
                     height: 30,
                     width: 30,
                     errorBuilder: (context, error, stackTrace) {
-                      return const Icon(Icons.broken_image,
-                          size: 30, color: Colors.grey);
+                      return Icon(Icons.broken_image,
+                          size: 30, color: primaryColor);
                     },
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(list[index].nama!,
+                Text(listOlahRaga[index].nama!,
                     textAlign: TextAlign.center,
                     style: const TextStyle(fontSize: 12)),
               ],

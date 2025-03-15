@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,7 +5,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:kpifit/config/colors.dart';
 import 'package:kpifit/databases/hive.dart';
 import 'package:kpifit/models/aktifitas.dart';
+import 'package:kpifit/service/services.dart';
 import 'package:kpifit/util/widget_button.dart';
+
+final isUploadingProvider = StateProvider<bool>((ref) => false);
 
 class PendingWorkoutPage extends ConsumerStatefulWidget {
   const PendingWorkoutPage({super.key});
@@ -35,11 +37,32 @@ class _PendingWorkoutPageState extends ConsumerState<PendingWorkoutPage> {
     }
   }
 
+  Future<void> _syncUpload() async {
+    ref.read(isUploadingProvider.notifier).state = true;
+    List<AktivitasModel> failedUploads = [];
+
+    for (var element in workouts) {
+      final result =
+          await CoreService(context).uploadAktifitas(element, context);
+      if (result != 'success') {
+        failedUploads.add(element);
+      }
+    }
+
+    setState(() {
+      workouts = failedUploads;
+    });
+
+    ref.read(isUploadingProvider.notifier).state = false;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isUploading = ref.watch(isUploadingProvider);
+
     return Scaffold(
       body: workouts.isEmpty
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: Text("No pending workouts"))
           : Container(
               margin: const EdgeInsets.symmetric(horizontal: 14),
               width: double.infinity,
@@ -118,7 +141,9 @@ class _PendingWorkoutPageState extends ConsumerState<PendingWorkoutPage> {
             ),
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.all(8.0),
-        child: button('Sync Upload', _loadWorkoutData, secondaryColor),
+        child: isUploading
+            ? Center(child: CircularProgressIndicator(color: secondaryColor))
+            : button('Sync Upload', _syncUpload, secondaryColor),
       ),
     );
   }

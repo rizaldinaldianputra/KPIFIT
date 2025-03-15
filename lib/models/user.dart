@@ -1,12 +1,29 @@
 import 'dart:convert';
+import 'package:hive/hive.dart';
 
-class UserModel {
+part 'user.g.dart';
+
+@HiveType(typeId: 2)
+class UserModel extends HiveObject {
+  @HiveField(0)
   String nama;
+
+  @HiveField(1)
   String email;
+
+  @HiveField(2)
   String noHp;
+
+  @HiveField(3)
   String jabatan;
+
+  @HiveField(4)
   String dinas;
+
+  @HiveField(5)
   String divisi;
+
+  @HiveField(6)
   String username;
 
   UserModel({

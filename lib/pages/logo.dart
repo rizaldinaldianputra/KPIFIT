@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:kpifit/databases/hive.dart';
+import 'package:kpifit/models/aktifitas.dart';
+import 'package:kpifit/models/olahraga.dart';
+import 'package:kpifit/models/user.dart';
+import 'package:kpifit/service/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class LogoPag extends ConsumerStatefulWidget {
@@ -14,7 +19,19 @@ class _LogoPagState extends ConsumerState<LogoPag> {
   @override
   void initState() {
     initialSeason();
+    getSport();
     super.initState();
+  }
+
+  void getSport() async {
+    List<SportModel> result = await CoreService(context).fetchOlahragaList();
+    var existingData = HiveService.loadSportData(); // Ambil data dari Hive
+
+    for (var element in result) {
+      if (!existingData.contains(element)) {
+        await HiveService.saveSportData(element);
+      }
+    }
   }
 
   Future<void> initialSeason() async {

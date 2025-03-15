@@ -15,6 +15,8 @@ class StopWatchPage extends StatefulWidget {
 class StopWatchPageState extends State<StopWatchPage> {
   final StopWatchTimer _stopWatchTimer = StopWatchTimer();
   final _isHours = true;
+  bool _isRunning = false;
+  bool _isStopped = false;
 
   @override
   void dispose() {
@@ -72,26 +74,64 @@ class StopWatchPageState extends State<StopWatchPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                IconButton(
-                  icon: const Icon(Icons.play_arrow,
-                      size: 40, color: Colors.blue),
-                  onPressed: _stopWatchTimer.onStartTimer,
-                ),
+                if (!_isRunning && !_isStopped)
+                  IconButton(
+                    icon: const Icon(Icons.play_arrow,
+                        size: 40, color: Colors.blue),
+                    onPressed: () {
+                      _stopWatchTimer.onStartTimer();
+                      setState(() {
+                        _isRunning = true;
+                        _isStopped = false;
+                      });
+                    },
+                  ),
+                if (_isRunning)
+                  IconButton(
+                    icon:
+                        const Icon(Icons.pause, size: 40, color: Colors.orange),
+                    onPressed: () {
+                      _stopWatchTimer.onStopTimer();
+                      setState(() {
+                        _isRunning = false;
+                        _isStopped = true;
+                      });
+                    },
+                  ),
+                if (_isStopped)
+                  IconButton(
+                    icon: const Icon(Icons.play_arrow,
+                        size: 40, color: Colors.green),
+                    onPressed: () {
+                      _stopWatchTimer.onStartTimer();
+                      setState(() {
+                        _isRunning = true;
+                        _isStopped = false;
+                      });
+                    },
+                  ),
                 const SizedBox(width: 20),
-                IconButton(
-                  icon: const Icon(Icons.stop, size: 40, color: Colors.red),
-                  onPressed: () {
-                    _stopWatchTimer.onStopTimer();
-                    context.goNamed('map',
-                        queryParameters: {'timer': timer},
-                        extra: widget.sportModel);
-                  },
-                ),
+                if (!_isRunning && _stopWatchTimer.rawTime.value > 0)
+                  IconButton(
+                    icon: const Icon(Icons.stop, size: 40, color: Colors.red),
+                    onPressed: () {
+                      _stopWatchTimer.onStopTimer();
+                      context.goNamed('map',
+                          queryParameters: {'timer': timer},
+                          extra: widget.sportModel);
+                    },
+                  ),
                 const SizedBox(width: 20),
                 IconButton(
                   icon:
                       const Icon(Icons.refresh, size: 40, color: Colors.green),
-                  onPressed: _stopWatchTimer.onResetTimer,
+                  onPressed: () {
+                    _stopWatchTimer.onResetTimer();
+                    setState(() {
+                      _isRunning = false;
+                      _isStopped = false;
+                    });
+                  },
                 ),
               ],
             ),

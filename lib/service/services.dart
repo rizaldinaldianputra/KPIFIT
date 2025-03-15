@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:http_parser/http_parser.dart';
 
 import 'package:kpifit/config/constant.dart';
+import 'package:kpifit/databases/hive.dart';
 import 'package:kpifit/models/aktifitas.dart';
 import 'package:kpifit/models/olahraga.dart';
 import 'package:kpifit/models/user.dart';
@@ -33,7 +34,17 @@ class CoreService {
       final SharedPreferences sharedPreferences =
           await SharedPreferences.getInstance();
       await sharedPreferences.setString('nik', response.data['nik']);
+      await CoreService(context).myProfile();
+
       notifikasiSuccess(response.data['message']);
+      List<SportModel> result = await CoreService(context).fetchOlahragaList();
+      var existingData = HiveService.loadSportData(); // Ambil data dari Hive
+
+      for (var element in result) {
+        if (!existingData.contains(element)) {
+          await HiveService.saveSportData(element);
+        }
+      }
       context.goNamed('home');
       return response.data['status'];
     } else {
@@ -55,8 +66,6 @@ class CoreService {
       final data = {'nik': nik};
 
       Response response = await api.postHTTP('${baseUrl}cekprofil', data);
-
-      debugPrint("Response: ${response.data}");
 
       if (response.data is Map<String, dynamic>) {
         final responseData = response.data as Map<String, dynamic>;

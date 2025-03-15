@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hexcolor/hexcolor.dart';
 import 'package:kpifit/config/colors.dart';
+import 'package:kpifit/databases/hive.dart';
+import 'package:kpifit/models/aktifitas.dart';
+import 'package:kpifit/models/olahraga.dart';
+import 'package:kpifit/models/user.dart';
 import 'package:kpifit/service/services.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
@@ -203,6 +206,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       setState(() {
         isLoading = true;
       });
+
       await coreService.login(username, passwrod, context);
     } finally {
       setState(() {

@@ -1,27 +1,27 @@
 import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:kpifit/models/aktifitas.dart';
 import 'package:kpifit/models/olahraga.dart';
-import 'package:kpifit/models/workout.dart';
 
 class HiveService {
-  static late Box<WorkoutModel> _box;
+  static late Box<AktivitasModel> _box;
 
   /// **Inisialisasi Hive**
   static Future<void> init() async {
     await Hive.initFlutter();
-    Hive.registerAdapter(WorkoutModelAdapter());
+    Hive.registerAdapter(AktivitasModelAdapter());
     Hive.registerAdapter(SportModelAdapter());
 
-    _box = await Hive.openBox<WorkoutModel>('workoutBox');
+    _box = await Hive.openBox<AktivitasModel>('workoutBox');
   }
 
   /// **Simpan WorkoutModel ke Hive**
-  static Future<void> saveWorkoutData(WorkoutModel workout) async {
+  static Future<void> saveWorkoutData(AktivitasModel workout) async {
     await _box.add(workout);
   }
 
   /// **Ambil Semua WorkoutModel dari Hive**
-  static List<WorkoutModel> loadWorkoutData() {
+  static List<AktivitasModel> loadWorkoutData() {
     return _box.values.toList();
   }
 
@@ -31,7 +31,8 @@ class HiveService {
   }
 
   /// **Perbarui WorkoutModel berdasarkan index**
-  static Future<void> updateWorkoutData(int index, WorkoutModel workout) async {
+  static Future<void> updateWorkoutData(
+      int index, AktivitasModel workout) async {
     await _box.putAt(index, workout);
   }
 

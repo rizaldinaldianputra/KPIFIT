@@ -1,19 +1,21 @@
 import 'dart:convert';
-
 import 'package:dio/dio.dart';
-import 'package:dio/dio.dart' as diopackage;
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kpifit/config/constant.dart';
 import 'package:kpifit/util/widget_notifikasi.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class CommonService {
   static const String url = API_URL;
+  static const String bearerToken =
+      "aisd9i9123nasd7m298masd9iaasdn9n812basdn"; // Token tetap
+
   static BaseOptions opts = BaseOptions(
     baseUrl: url,
     responseType: ResponseType.json,
+    headers: {
+      "Authorization": "Bearer $bearerToken",
+    },
   );
 
   late final Dio _dio;
@@ -25,123 +27,54 @@ class CommonService {
 
   InterceptorsWrapper getInterceptorWrapper(BuildContext context) {
     return InterceptorsWrapper(
-      onError: (error, errorInterceptor) async {
-        if (error.response == null) {
-          notifikasiFailed('Network Error');
-          // final SharedPreferences sharedPreferences =
-          //     await SharedPreferences.getInstance();
-          // await sharedPreferences.remove("user");
-          // await sharedPreferences.remove("token");
-
-          // // Navigasi ke halaman login
-          // GoRouter.of(context).goNamed('login');
-          return errorInterceptor.resolve(
-              error.response ?? Response(requestOptions: error.requestOptions));
-        }
-        if (error.response!.statusCode == 403 ||
-            error.response!.statusCode == 401) {
-          notifikasiFailed(error.response!.statusCode == 403
-              ? error.response?.data["message"]
-              : error.response?.data["message"]);
-          return errorInterceptor.resolve(error.response!);
-        } else {
-          return errorInterceptor.resolve(error.response!);
-        }
-      },
-      onRequest: (request, requestInterceptor) async {
-        final SharedPreferences sharedPreferences =
-            await SharedPreferences.getInstance();
-        final String? token = sharedPreferences.getString("token");
-        if (token != null) {
-          request.headers.addAll({"Authorization": "Bearer $token"});
-        }
-        return requestInterceptor.next(request);
-      },
-      onResponse: (response, responseInterceptor) async {
-        if (response.statusCode == 401 || response.statusCode == 403) {
-          // Hapus token jika tidak valid
-          final SharedPreferences sharedPreferences =
-              await SharedPreferences.getInstance();
-          await sharedPreferences.remove("user");
-          await sharedPreferences.remove("token");
-
-          // Navigasi ke halaman login
+      onError: (error, handler) async {
+        if (error.response?.statusCode == 401 ||
+            error.response?.statusCode == 403) {
           GoRouter.of(context).goNamed('login');
-          return;
+          notifikasiFailed("Session expired, please login again.");
         }
-        return responseInterceptor.next(response);
+        return handler.next(error);
       },
     );
   }
 
-  static dynamic errorInterceptor(RequestOptions options) async {
-    // Get your JWT token
-    const token = '';
-    options.headers.addAll({"Authorization": "Bearer: $token"});
-    return options;
-  }
-
-  Future<diopackage.Response> getHTTP(String url) async {
+  Future<Response> getHTTP(String url) async {
     try {
-      diopackage.Response response = await _dio.get(url);
-      return Future.value(response);
+      return await _dio.get(url);
     } on DioException catch (e) {
-      return Future.error(e);
+      return Future.error(e.response?.data['message'] ?? "Unknown Error");
     }
   }
 
-  Future<diopackage.Response> postHTTP(String url, dynamic data) async {
+  Future<Response> postHTTP(String url, dynamic data) async {
     try {
-      String json = jsonEncode(data);
-
-      diopackage.Response response = await _dio.post(url, data: json);
-      return response;
+      return await _dio.post(url, data: jsonEncode(data));
     } on DioException catch (e) {
-      if (e.response == null) {
-        return Future.error(e);
-      } else {
-        return Future.error(e.response?.data['message'] ?? "Unknown Error");
-      }
+      return Future.error(e.response?.data['message'] ?? "Unknown Error");
     }
   }
 
-  Future<diopackage.Response> putHTTP(String url, dynamic data) async {
+  Future<Response> putHTTP(String url, dynamic data) async {
     try {
-      String json = jsonEncode(data);
-      diopackage.Response response = await _dio.put(url, data: json);
-      return Future.value(response);
+      return await _dio.put(url, data: jsonEncode(data));
     } on DioException catch (e) {
-      return Future.error(e);
+      return Future.error(e.response?.data['message'] ?? "Unknown Error");
     }
   }
 
-  Future<diopackage.Response> deleteHTTP(String url) async {
+  Future<Response> deleteHTTP(String url) async {
     try {
-      diopackage.Response response = await _dio.delete(url);
-      return Future.value(response);
+      return await _dio.delete(url);
     } on DioException catch (e) {
-      return Future.error(e);
+      return Future.error(e.response?.data['message'] ?? "Unknown Error");
     }
   }
 
-  Future<diopackage.Response> postHTTPMedia(String url, FormData data) async {
+  Future<Response> postHTTPMedia(String url, FormData data) async {
     try {
-      diopackage.Response response = await _dio.post(
-        url,
-        data: data,
-        options: Options(
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        ),
-      );
-      return response;
+      return await _dio.post(url, data: data);
     } on DioException catch (e) {
-      if (e.response == null) {
-        return Future.error(e);
-      } else {
-        return Future.error(e.response!.data['message'] ?? "Unknown Error");
-      }
+      return Future.error(e.response?.data['message'] ?? "Unknown Error");
     }
   }
 }

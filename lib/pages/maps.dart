@@ -1,19 +1,24 @@
 import 'dart:io';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:hexcolor/hexcolor.dart';
 import 'package:hive/hive.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 import 'package:kpifit/config/colors.dart';
 import 'package:kpifit/databases/hive.dart';
+import 'package:kpifit/models/aktifitas.dart';
 import 'package:kpifit/models/olahraga.dart';
-import 'package:kpifit/models/workout.dart';
-import 'package:kpifit/routing/route.dart';
+import 'package:kpifit/service/services.dart';
 import 'package:kpifit/util/widget_button.dart';
+import 'package:kpifit/util/widget_notifikasi.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:geocoding/geocoding.dart';
 
 class MapPage extends StatefulWidget {
   final String timer;
@@ -30,10 +35,32 @@ class _MapPageState extends State<MapPage> {
   final ImagePicker _picker = ImagePicker();
   late Box _imageBox;
   final MapController _mapController = MapController();
+  String lokasiAktif = "Sedang mencari lokasi...";
+
+  Future<void> _pickAttachment() async {
+    final XFile? file = await _picker.pickImage(source: ImageSource.gallery);
+    if (file != null) {
+      setState(() {
+        _images = [File(file.path)]; // Simpan hanya satu gambar terbaru
+      });
+      _saveImageToHive();
+    }
+  }
+
+  Future<void> _pickImage() async {
+    final XFile? image = await _picker.pickImage(source: ImageSource.camera);
+    if (image != null) {
+      setState(() {
+        _images = [File(image.path)]; // Ganti gambar lama dengan yang baru
+      });
+      _saveImageToHive();
+    }
+  }
 
   @override
   void initState() {
     super.initState();
+    _getCurrentLocation();
     _initialize();
   }
 
@@ -81,15 +108,24 @@ class _MapPageState extends State<MapPage> {
       _currentLocation = LatLng(position.latitude, position.longitude);
     });
     _mapController.move(_currentLocation!, 15.0);
+
+    // Ambil nama lokasi dari koordinat
+    await getAddressFromLatLng(position.latitude, position.longitude);
   }
 
-  Future<void> _pickImage() async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.camera);
-    if (image != null) {
+  Future<void> getAddressFromLatLng(double lat, double lng) async {
+    try {
+      List<Placemark> placemarks = await placemarkFromCoordinates(lat, lng);
+      Placemark place = placemarks.first;
+
+      String lokasi =
+          "${place.subLocality}, ${place.locality}, ${place.country}";
+
       setState(() {
-        _images.add(File(image.path));
+        lokasiAktif = lokasi;
       });
-      _saveImageToHive();
+    } catch (e) {
+      print("Error mendapatkan alamat: $e");
     }
   }
 
@@ -104,9 +140,42 @@ class _MapPageState extends State<MapPage> {
     _saveImageToHive();
   }
 
+  Future<bool> checkInternetAccess() async {
+    try {
+      final result = await InternetAddress.lookup('google.com');
+      return result.isNotEmpty && result.first.rawAddress.isNotEmpty;
+    } catch (e) {
+      return false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    String formattedDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
+
     return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back,
+            color: Colors.white,
+          ),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(
+          'Workout',
+          style: const TextStyle(color: Colors.white, fontSize: 18),
+        ),
+        flexibleSpace: Container(
+          height: 200,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [HexColor('#01A2E9'), HexColor('#274896')],
+            ),
+          ),
+        ),
+      ),
       body: Column(
         children: [
           // PETA
@@ -169,129 +238,135 @@ class _MapPageState extends State<MapPage> {
               borderRadius: BorderRadius.circular(8),
               border: Border.all(width: 0.5, color: Colors.grey),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.sports_football,
-                      color: primaryColor,
-                    ),
-                    const SizedBox(width: 20),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.sportModel.nama ?? '',
-                          style: GoogleFonts.inter(
-                            fontWeight: FontWeight.w500,
-                            fontSize: 14,
-                            color: Colors.black,
-                          ),
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Wrap(
+                children: [
+                  SizedBox(
+                      height: 30, child: Image.network(widget.sportModel.gif!)),
+                  const SizedBox(width: 20),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.sportModel.nama ?? '',
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w500,
+                          fontSize: 14,
+                          color: Colors.black,
                         ),
-                        Text(
-                          widget.sportModel.gif ?? '',
-                          style: GoogleFonts.inter(
-                            fontWeight: FontWeight.w500,
-                            fontSize: 12,
-                            color: Colors.grey,
-                          ),
+                      ),
+                      Text(
+                        formattedDate,
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w500,
+                          fontSize: 12,
+                          color: Colors.grey,
                         ),
-                        Text(
-                          widget.timer,
-                          style: GoogleFonts.inter(
-                            fontWeight: FontWeight.w500,
-                            fontSize: 12,
-                            color: Colors.grey,
-                          ),
+                      ),
+                      Text(
+                        lokasiAktif,
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w500,
+                          fontSize: 12,
+                          color: Colors.grey,
                         ),
-                      ],
-                    ),
-                  ],
-                ),
-                const Icon(
-                  Icons.navigate_next_rounded,
-                  size: 30,
-                  color: Colors.grey,
-                )
-              ],
+                      ),
+                      Text(
+                        widget.timer,
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w500,
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
 
           // GALERI FOTO
           Expanded(
-            child: Column(
-              children: [
-                Expanded(
-                  child: _images.isEmpty
-                      ? const Center(child: Text("Belum ada foto"))
-                      : GridView.builder(
-                          padding: const EdgeInsets.all(10),
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 3,
-                            crossAxisSpacing: 8,
-                            mainAxisSpacing: 8,
-                          ),
-                          itemCount: _images.length,
-                          itemBuilder: (context, index) => Stack(
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(10),
-                                child: Image.file(
-                                  _images[index],
-                                  width: double.infinity,
-                                  height: double.infinity,
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                              Positioned(
-                                top: 4,
-                                right: 4,
-                                child: GestureDetector(
-                                  onTap: () => _deleteImage(index),
-                                  child: Container(
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: const BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: Colors.red,
+              child: _images.isEmpty
+                  ? const Center(child: Text("Belum ada foto"))
+                  : Expanded(
+                      child: _images.isEmpty
+                          ? const Center(child: Text("Belum ada lampiran"))
+                          : Expanded(
+                              child: _images.isEmpty
+                                  ? const Center(
+                                      child: Text("Belum ada lampiran"))
+                                  : Padding(
+                                      padding: const EdgeInsets.all(10),
+                                      child: Stack(
+                                        alignment: Alignment.topRight,
+                                        children: [
+                                          Image.file(_images.first,
+                                              fit: BoxFit.cover,
+                                              width: double.infinity),
+                                          GestureDetector(
+                                            onTap: () => _deleteImage(0),
+                                            child: const Icon(Icons.close,
+                                                color: Colors.red),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                    child: const Icon(
-                                      Icons.close,
-                                      color: Colors.white,
-                                      size: 16,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                ),
-              ],
-            ),
+                            ))),
+        ],
+      ),
+      bottomNavigationBar: Row(
+        children: [
+          Expanded(
+            child: button('Simpan', () async {
+              final sportData = AktivitasModel(
+                submitDate: DateTime.now().toString(),
+                status: 0,
+                nama: 'nama',
+                nik: 'nik',
+                lampiran: '',
+                tanggal: DateTime.now().toString(),
+                lokasi: lokasiAktif, // Nama lokasi dari koordinat
+                namaOlahraga: widget.sportModel.nama ?? '',
+                totalWaktu: widget.timer,
+                latitude: _currentLocation?.latitude ?? 0.0,
+                longitude: _currentLocation?.longitude ?? 0.0,
+                foto: _images.isNotEmpty ? _images.first.path : '',
+              );
+
+              final hasInternet = await checkInternetAccess();
+
+              if (!hasInternet) {
+                // Simpan lokal jika tidak ada internet
+                await HiveService.saveWorkoutData(sportData);
+                notifikasiLocal('Data disimpan secara offline');
+                context.goNamed('home');
+              } else {
+                // Upload jika ada internet
+                await CoreService(context).uploadAktifitas(sportData, context);
+              }
+            }, primaryColor),
           ),
         ],
       ),
-      bottomNavigationBar: button('Simpan', () async {
-        final sportData = WorkoutModel(
-          tanggal: DateTime.now().toString(),
-          lokasi: 'Bogor',
-          sport: widget.sportModel,
-          timer: widget.timer,
-          latitude: _currentLocation?.latitude ?? 0.0,
-          longitude: _currentLocation?.longitude ?? 0.0,
-          imagePaths: _images.map((e) => e.path).toList(),
-        );
-
-        await HiveService.saveWorkoutData(sportData);
-        context.goNamed('home');
-      }, primaryColor),
-      floatingActionButton: FloatingActionButton(
-        child: const Icon(Icons.camera_alt, color: Colors.black),
-        onPressed: _pickImage,
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton(
+            heroTag: "btn1",
+            child: const Icon(Icons.camera_alt, color: Colors.black),
+            onPressed: _pickImage,
+          ),
+          const SizedBox(height: 10),
+          FloatingActionButton(
+            heroTag: "btn2",
+            child: const Icon(Icons.attachment, color: Colors.black),
+            onPressed: _pickAttachment,
+          ),
+        ],
       ),
     );
   }

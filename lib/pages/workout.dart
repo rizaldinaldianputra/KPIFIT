@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kpifit/databases/hive.dart';
-import 'package:kpifit/pages/workout/all_workout.dart';
-import 'package:kpifit/pages/workout/pending_workout.dart';
+import 'package:kpifit/pages/aktifitas/all_aktifitas.dart';
+import 'package:kpifit/pages/aktifitas/pending_aktifitas.dart';
 
 class WorkOutPage extends ConsumerStatefulWidget {
   const WorkOutPage({super.key});

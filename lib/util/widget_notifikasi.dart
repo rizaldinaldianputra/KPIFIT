@@ -28,3 +28,12 @@ notifikasiAuth(String message) {
       textColor: Colors.white,
       fontSize: 13);
 }
+
+notifikasiLocal(String message) {
+  Fluttertoast.showToast(
+      msg: message,
+      toastLength: Toast.LENGTH_SHORT,
+      backgroundColor: Colors.orange,
+      textColor: Colors.white,
+      fontSize: 13);
+}

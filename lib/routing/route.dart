@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:kpifit/models/aktifitas.dart';
 import 'package:kpifit/models/olahraga.dart';
-import 'package:kpifit/models/workout.dart';
+import 'package:kpifit/models/user.dart';
+import 'package:kpifit/pages/account/about.dart';
+import 'package:kpifit/pages/account/changepassword.dart';
+import 'package:kpifit/pages/account/help.dart';
+import 'package:kpifit/pages/account/notification.dart';
+import 'package:kpifit/pages/account/profile.dart';
 import 'package:kpifit/pages/home.dart';
 import 'package:kpifit/pages/login.dart';
 import 'package:kpifit/pages/logo.dart';
 import 'package:kpifit/pages/maps.dart';
 import 'package:kpifit/pages/stopwatch.dart';
-import 'package:kpifit/pages/workout/detail_workout.dart';
+import 'package:kpifit/pages/aktifitas/detail_aktifitas.dart';
 
 final GoRouter router = GoRouter(initialLocation: '/', routes: <RouteBase>[
   GoRoute(
@@ -32,15 +38,58 @@ final GoRouter router = GoRouter(initialLocation: '/', routes: <RouteBase>[
     },
     routes: <RouteBase>[
       GoRoute(
+        path: '/notikasi',
+        name: 'notikasi',
+        builder: (BuildContext context, GoRouterState state) {
+          return NotificationPage();
+        },
+      ),
+      GoRoute(
+        path: '/changepassword',
+        name: 'changepassword',
+        builder: (BuildContext context, GoRouterState state) {
+          UserModel userModel = state.extra as UserModel;
+
+          return ChangepasswordPage(
+            userModel: userModel,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/help',
+        name: 'help',
+        builder: (BuildContext context, GoRouterState state) {
+          return HelpPage();
+        },
+      ),
+      GoRoute(
+        path: '/about',
+        name: 'about',
+        builder: (BuildContext context, GoRouterState state) {
+          return AboutPage();
+        },
+      ),
+      GoRoute(
+        path: '/profile',
+        name: 'profile',
+        builder: (BuildContext context, GoRouterState state) {
+          UserModel userModel = state.extra as UserModel;
+          return ProfilePage(
+            userModel: userModel,
+          );
+        },
+      ),
+      GoRoute(
         path: '/detail',
         name: 'detail',
         builder: (BuildContext context, GoRouterState state) {
-          WorkoutModel workoutModel =
-              state.extra as WorkoutModel; // 👈 casting is important
+          AktivitasModel workoutModel =
+              state.extra as AktivitasModel; // 👈 casting is important
 
           return DetailPage(
             workoutModel: workoutModel,
             index: state.uri.queryParameters['index'],
+            show: state.uri.queryParameters['show'],
           );
         },
       ),

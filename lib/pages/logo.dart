@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LogoPag extends ConsumerStatefulWidget {
   const LogoPag({super.key});
@@ -12,10 +13,19 @@ class LogoPag extends ConsumerStatefulWidget {
 class _LogoPagState extends ConsumerState<LogoPag> {
   @override
   void initState() {
+    initialSeason();
     super.initState();
-    Future.delayed(const Duration(seconds: 3), () {
-      context.goNamed('login');
-    });
+  }
+
+  Future<void> initialSeason() async {
+    final sharedPreferences = await SharedPreferences.getInstance();
+    final String? nik = sharedPreferences.getString('nik');
+
+    if (nik == null || nik.isEmpty) {
+      if (mounted) context.goNamed('login');
+    } else {
+      if (mounted) context.goNamed('home');
+    }
   }
 
   @override

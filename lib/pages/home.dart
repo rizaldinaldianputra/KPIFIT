@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kpifit/config/colors.dart';
-import 'package:kpifit/pages/account.dart';
+import 'package:kpifit/pages/account/account.dart';
 import 'package:kpifit/pages/beranda.dart';
 import 'package:kpifit/pages/workout.dart';
 import 'package:kpifit/riverpod/home.dart';

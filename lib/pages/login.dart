@@ -78,6 +78,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   SizedBox(
                     height: 50,
                     child: TextField(
+                      cursorColor: primaryColor,
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
                       decoration: InputDecoration(
@@ -109,6 +110,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   SizedBox(
                     height: 50,
                     child: TextField(
+                      cursorColor: primaryColor,
                       controller: _passwordController,
                       obscureText: _isPasswordObscure,
                       decoration: InputDecoration(
@@ -154,11 +156,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     onTap: isLoading
                         ? null
                         : () async {
-                            // await doLogin(
-                            //   _emailController.text,
-                            //   _passwordController.text,
-                            // );
-                            context.goNamed('home');
+                            await doLogin(
+                              _emailController.text,
+                              _passwordController.text,
+                            );
                           },
                     child: Container(
                       height: 50,
@@ -197,12 +198,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     );
   }
 
-  doLogin(String username, String passwrod) {
+  doLogin(String username, String passwrod) async {
     try {
       setState(() {
         isLoading = true;
       });
-      coreService.login(username, passwrod, context);
+      await coreService.login(username, passwrod, context);
     } finally {
       setState(() {
         isLoading = false;

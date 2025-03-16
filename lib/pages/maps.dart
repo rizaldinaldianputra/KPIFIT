@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:awesome_dialog/awesome_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -13,6 +14,7 @@ import 'package:kpifit/config/colors.dart';
 import 'package:kpifit/databases/hive.dart';
 import 'package:kpifit/models/aktifitas.dart';
 import 'package:kpifit/models/olahraga.dart';
+import 'package:kpifit/riverpod/home.dart';
 import 'package:kpifit/service/services.dart';
 import 'package:kpifit/util/widget_button.dart';
 import 'package:kpifit/util/widget_notifikasi.dart';
@@ -20,16 +22,16 @@ import 'package:latlong2/latlong.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:geocoding/geocoding.dart';
 
-class MapPage extends StatefulWidget {
+class MapPage extends ConsumerStatefulWidget {
   final String timer;
   final SportModel sportModel;
   const MapPage({super.key, required this.timer, required this.sportModel});
 
   @override
-  State<MapPage> createState() => _MapPageState();
+  ConsumerState<ConsumerStatefulWidget> createState() => _MapPageState();
 }
 
-class _MapPageState extends State<MapPage> {
+class _MapPageState extends ConsumerState<MapPage> {
   LatLng? _currentLocation;
   List<File> _images = [];
   final ImagePicker _picker = ImagePicker();
@@ -415,7 +417,9 @@ class _MapPageState extends State<MapPage> {
                             print("Menyimpan data secara offline...");
                             await HiveService.saveWorkoutData(sportData);
                             notifikasiLocal('Data disimpan secara offline');
-                            context.goNamed('home');
+                            context.pushReplacementNamed('home');
+                            ref.refresh(homePageProvider.notifier);
+                            ref.watch(homePageProvider.notifier).jumpToPage(0);
                           } else {
                             print("Mengunggah data ke server...");
                             await CoreService(context)

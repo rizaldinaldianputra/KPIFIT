@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:awesome_dialog/awesome_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -31,16 +32,25 @@ class DetailPage extends ConsumerStatefulWidget {
 }
 
 class _DetailPageState extends ConsumerState<DetailPage> {
+  Future<bool> checkInternetAccess() async {
+    try {
+      final result = await InternetAddress.lookup('google.com');
+      return result.isNotEmpty && result.first.rawAddress.isNotEmpty;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  final MapController _mapController = MapController();
+  String address = "Sedang mengambil alamat...";
+  bool isloading = false;
+
   @override
   void initState() {
     _getAddress();
     HiveService.init();
     super.initState();
   }
-
-  final MapController _mapController = MapController();
-
-  String address = "Sedang mengambil alamat...";
 
   Future<void> _getAddress() async {
     try {
@@ -71,18 +81,19 @@ class _DetailPageState extends ConsumerState<DetailPage> {
   Widget build(BuildContext context) {
     final String imagePaths = widget.workoutModel.foto;
     print(json.encode(widget.workoutModel));
-    return Scaffold(
-      appBar: buildGradientAppBar(context, 'Detail Aktifitas'),
-      body: Column(
-        children: [
-          // PETA
-          SizedBox(
-            height: 250,
-            child: LatLng(widget.workoutModel.latitude,
-                        widget.workoutModel.longitude) ==
-                    null
-                ? const Center(child: Text("Lokasi tidak tersedia"))
-                : FlutterMap(
+
+    return isloading
+        ? Scaffold(
+            appBar: buildGradientAppBar(context, 'Detail Aktifitas'),
+            body: Center(child: CircularProgressIndicator(color: primaryColor)),
+          )
+        : Scaffold(
+            appBar: buildGradientAppBar(context, 'Detail Aktifitas'),
+            body: Column(
+              children: [
+                SizedBox(
+                  height: 250,
+                  child: FlutterMap(
                     mapController: _mapController,
                     options: MapOptions(
                       initialCenter: LatLng(widget.workoutModel.latitude,
@@ -103,160 +114,124 @@ class _DetailPageState extends ConsumerState<DetailPage> {
                                 widget.workoutModel.longitude),
                             width: 50,
                             height: 50,
-                            child: const Icon(
-                              Icons.location_on,
-                              color: Colors.red,
-                              size: 40,
-                            ),
+                            child: const Icon(Icons.location_on,
+                                color: Colors.red, size: 40),
                           ),
                         ],
                       ),
                     ],
                   ),
-          ),
-
-          const SizedBox(height: 10),
-          Text(
-            address,
-            style: GoogleFonts.inter(
-              fontWeight: FontWeight.w500,
-              fontSize: 12,
-              color: Colors.grey,
+                ),
+                const SizedBox(height: 10),
+                Text(address,
+                    style: GoogleFonts.inter(
+                        fontWeight: FontWeight.w500,
+                        fontSize: 12,
+                        color: Colors.grey)),
+                Expanded(
+                  child: imagePaths.isEmpty
+                      ? const Center(child: Text("Tidak ada gambar"))
+                      : Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: widget.show == 'A'
+                              ? Image.file(File(imagePaths),
+                                  width: double.infinity,
+                                  height: double.infinity,
+                                  fit: BoxFit.cover)
+                              : Image.network(imagePaths,
+                                  width: double.infinity,
+                                  height: double.infinity,
+                                  fit: BoxFit.cover),
+                        ),
+                ),
+              ],
             ),
-          ),
-          Container(
-            padding: const EdgeInsets.all(8),
-            margin: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(width: 0.5, color: Colors.grey),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
+            bottomNavigationBar: Visibility(
+              visible: widget.show == 'A',
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                child: Row(
                   children: [
-                    Icon(
-                      Icons.sports_football,
-                      color: primaryColor,
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          AwesomeDialog(
+                            context: context,
+                            dialogType: DialogType.info,
+                            animType: AnimType.rightSlide,
+                            title: 'Konfirmasi',
+                            desc: 'Apakah Anda yakin ingin menghapus data ini?',
+                            btnCancelOnPress: () {},
+                            btnOkOnPress: () async {
+                              try {
+                                setState(() => isloading = true);
+                                await HiveService.removeWorkoutData(
+                                    int.parse(widget.index!));
+                                notifikasiFailed('Data berhasil dihapus');
+                                context.goNamed('home');
+                                ref
+                                    .watch(homePageProvider.notifier)
+                                    .jumpToPage(0);
+                              } finally {
+                                setState(() => isloading = false);
+                              }
+                            },
+                          ).show();
+                        },
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red),
+                        child: const Text("Delete"),
+                      ),
                     ),
-                    const SizedBox(width: 20),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.workoutModel.namaOlahraga,
-                          style: GoogleFonts.inter(
-                            fontWeight: FontWeight.w500,
-                            fontSize: 14,
-                            color: Colors.black,
-                          ),
-                        ),
-                        Text(
-                          widget.workoutModel.totalWaktu,
-                          style: GoogleFonts.inter(
-                            fontWeight: FontWeight.w500,
-                            fontSize: 12,
-                            color: Colors.grey,
-                          ),
-                        ),
-                        Text(
-                          widget.workoutModel.tanggal ?? '',
-                          style: GoogleFonts.inter(
-                            fontWeight: FontWeight.w500,
-                            fontSize: 12,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ],
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          AwesomeDialog(
+                            context: context,
+                            dialogType: DialogType.info,
+                            animType: AnimType.rightSlide,
+                            title: 'Konfirmasi',
+                            desc: 'Apakah Anda yakin ingin menyimpan data ini?',
+                            btnCancelOnPress: () {},
+                            btnOkOnPress: () async {
+                              try {
+                                setState(() => isloading = true);
+                                final hasInternet = await checkInternetAccess();
+                                if (!hasInternet) {
+                                  notifikasiFailed(
+                                      'Tidak ada jaringan internet');
+                                } else {
+                                  String status = await CoreService(context)
+                                      .uploadAktifitas(
+                                          widget.workoutModel, context);
+                                  if (status == 'success') {
+                                    await HiveService.removeWorkoutData(
+                                        int.parse(widget.index!));
+                                    notifikasiLocal(
+                                        'Data berhasil dihapus dari local');
+                                    context.goNamed('home');
+                                    ref
+                                        .watch(homePageProvider.notifier)
+                                        .jumpToPage(0);
+                                  }
+                                }
+                              } finally {
+                                setState(() => isloading = false);
+                              }
+                            },
+                          ).show();
+                        },
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue),
+                        child: const Text("Upload"),
+                      ),
                     ),
                   ],
                 ),
-                const Icon(
-                  Icons.navigate_next_rounded,
-                  size: 30,
-                  color: Colors.grey,
-                )
-              ],
+              ),
             ),
-          ),
-          // GALERI FOTO
-          Expanded(
-            child: imagePaths.isEmpty
-                ? const Center(child: Text("Tidak ada gambar"))
-                : (widget.show == 'A')
-                    ? Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Image.file(
-                          File(imagePaths),
-                          width: double.infinity,
-                          height: double.infinity,
-                          fit: BoxFit.cover,
-                        ),
-                      )
-                    : Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Image.network(
-                          imagePaths,
-                          width: double.infinity,
-                          height: double.infinity,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-          ),
-
-          // TOMBOL DELETE & UPLOAD
-        ],
-      ),
-      bottomNavigationBar: Visibility(
-        visible: widget.show == 'A' ? true : false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-          child: Row(
-            children: [
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () async {
-                    await HiveService.removeWorkoutData(
-                        int.parse(widget.index!));
-                    notifikasiFailed(
-                        'Data berhasil dihapus'); // Tampilkan notifikasi
-                    context.goNamed('home');
-                    ref.watch(homePageProvider.notifier).jumpToPage(0);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                  ),
-                  child: const Text("Delete"),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () async {
-                    String status = await CoreService(context)
-                        .uploadAktifitas(widget.workoutModel, context);
-                    if (status == 'success') {
-                      await HiveService.removeWorkoutData(
-                          int.parse(widget.index!));
-                      notifikasiLocal(
-                          'Data berhasil dihapus dari local'); // Tampilkan notifikasi
-                      context.goNamed('home');
-                      ref.watch(homePageProvider.notifier).jumpToPage(0);
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                  ),
-                  child: const Text("Upload"),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+          );
   }
 }

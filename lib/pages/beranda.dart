@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -60,14 +61,36 @@ class _BerandaPageState extends ConsumerState<BerandaPage> {
     }
   }
 
-  Future<void> getAktifitas() async {
+  Future<bool> checkInternetAccess() async {
     try {
-      List<AktivitasModel> result = await HiveService.loadWorkoutData();
-      if (mounted) {
-        setState(() => listAktifis = result);
-      }
+      final result = await InternetAddress.lookup('google.com');
+      return result.isNotEmpty && result.first.rawAddress.isNotEmpty;
     } catch (e) {
-      debugPrint("Error: $e");
+      return false;
+    }
+  }
+
+  Future<void> getAktifitas() async {
+    final hasInternet = await checkInternetAccess();
+    if (!hasInternet) {
+      try {
+        List<AktivitasModel> result = await HiveService.loadWorkoutData();
+        if (mounted) {
+          setState(() => listAktifis = result);
+        }
+      } catch (e) {
+        debugPrint("Error: $e");
+      }
+    } else {
+      try {
+        List<AktivitasModel> result =
+            await CoreService(context).fetchAktifitas();
+        if (mounted) {
+          setState(() => listAktifis = result);
+        }
+      } catch (e) {
+        debugPrint("Error: $e");
+      }
     }
   }
 
@@ -102,7 +125,7 @@ class _BerandaPageState extends ConsumerState<BerandaPage> {
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
             _buildSportGrid(),
-            _buildRecentActivities(),
+            (listAktifis.length == 0) ? Container() : _buildRecentActivities(),
             const SizedBox(height: 50),
           ],
         ),
@@ -290,7 +313,11 @@ class _BerandaPageState extends ConsumerState<BerandaPage> {
             shrinkWrap: true,
             itemCount: listAktifis.length > 3 ? 3 : listAktifis.length,
             itemBuilder: (context, index) {
-              final data = listAktifis[index];
+              final sortedList = List.from(listAktifis)
+                ..sort((a, b) => DateTime.parse(b.tanggal)
+                    .compareTo(DateTime.parse(a.tanggal))); // Sort descending
+
+              final data = sortedList[index];
               return GestureDetector(
                 onTap: () {
                   context.goNamed('detail', extra: data, queryParameters: {
@@ -336,7 +363,7 @@ class _BerandaPageState extends ConsumerState<BerandaPage> {
                                 ),
                               ),
                               Text(
-                                data.totalWaktu + ' Menit',
+                                '${data.totalWaktu} Menit',
                                 style: GoogleFonts.inter(
                                   fontWeight: FontWeight.w500,
                                   fontSize: 12,

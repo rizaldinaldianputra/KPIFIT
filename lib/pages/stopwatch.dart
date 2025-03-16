@@ -116,7 +116,7 @@ class StopWatchPageState extends State<StopWatchPage> {
                     icon: const Icon(Icons.stop, size: 40, color: Colors.red),
                     onPressed: () {
                       _stopWatchTimer.onStopTimer();
-                      context.goNamed('map',
+                      context.pushReplacementNamed('map',
                           queryParameters: {'timer': timer},
                           extra: widget.sportModel);
                     },

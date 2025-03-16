@@ -7,6 +7,7 @@ import 'package:kpifit/databases/hive.dart';
 import 'package:kpifit/models/aktifitas.dart';
 import 'package:kpifit/service/services.dart';
 import 'package:kpifit/util/widget_button.dart';
+import 'package:kpifit/util/widget_notifikasi.dart';
 
 final isUploadingProvider = StateProvider<bool>((ref) => false);
 
@@ -39,21 +40,40 @@ class _PendingWorkoutPageState extends ConsumerState<PendingWorkoutPage> {
 
   Future<void> _syncUpload() async {
     ref.read(isUploadingProvider.notifier).state = true;
-    List<AktivitasModel> failedUploads = [];
 
-    for (var element in workouts) {
-      final result =
-          await CoreService(context).uploadAktifitas(element, context);
-      if (result != 'success') {
-        failedUploads.add(element);
+    try {
+      List<AktivitasModel> successfulUploads = [];
+
+      for (var element in List.from(workouts)) {
+        final result =
+            await CoreService(context).uploadAktifitas(element, context);
+        if (result == 'success') {
+          final index = workouts.indexWhere((w) => w.id == element.id);
+          if (index != -1) {
+            print("Menghapus data workout index: $index");
+            await HiveService.removeWorkoutData(index);
+            print("Data workout berhasil dihapus.");
+            successfulUploads.add(element);
+          }
+        }
       }
+
+      if (successfulUploads.isNotEmpty) {
+        setState(() {
+          workouts.removeWhere((w) => successfulUploads.contains(w));
+        });
+
+        notifikasiSuccess(
+            '${successfulUploads.length} data berhasil di-upload. Sisa ${workouts.length}');
+      } else {
+        notifikasiFailed('Tidak ada data yang berhasil di-upload');
+      }
+    } catch (e) {
+      debugPrint("Error saat sync: $e");
+      notifikasiFailed("Terjadi kesalahan saat upload.");
+    } finally {
+      ref.read(isUploadingProvider.notifier).state = false;
     }
-
-    setState(() {
-      workouts = failedUploads;
-    });
-
-    ref.read(isUploadingProvider.notifier).state = false;
   }
 
   @override

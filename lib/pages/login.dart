@@ -3,10 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hexcolor/hexcolor.dart';
 import 'package:kpifit/config/colors.dart';
-import 'package:kpifit/databases/hive.dart';
-import 'package:kpifit/models/aktifitas.dart';
-import 'package:kpifit/models/olahraga.dart';
-import 'package:kpifit/models/user.dart';
 import 'package:kpifit/service/services.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
@@ -19,7 +15,7 @@ class LoginPage extends ConsumerStatefulWidget {
 class _LoginPageState extends ConsumerState<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  bool _isPasswordObscure = false;
+  bool _isPasswordObscure = true;
   bool isLoading = false;
   late CoreService coreService;
 

@@ -24,8 +24,17 @@ import 'package:geocoding/geocoding.dart';
 
 class MapPage extends ConsumerStatefulWidget {
   final String timer;
+  final String latStart;
+  final String longStart;
   final SportModel sportModel;
-  const MapPage({super.key, required this.timer, required this.sportModel});
+
+  MapPage(
+      {Key? key,
+      required this.timer,
+      required this.sportModel,
+      required this.latStart,
+      required this.longStart})
+      : super(key: key);
 
   @override
   ConsumerState<ConsumerStatefulWidget> createState() => _MapPageState();
@@ -33,19 +42,21 @@ class MapPage extends ConsumerStatefulWidget {
 
 class _MapPageState extends ConsumerState<MapPage> {
   LatLng? _currentLocation;
+  LatLng? _destinationLocation;
   List<File> _images = [];
   final ImagePicker _picker = ImagePicker();
   late Box _imageBox;
   final MapController _mapController = MapController();
   String lokasiAktif = "";
-
+  double? distance;
   bool isLoading = false;
+  bool _mapReady = false;
 
   Future<void> _pickAttachment() async {
     final XFile? file = await _picker.pickImage(source: ImageSource.gallery);
     if (file != null) {
       setState(() {
-        _images = [File(file.path)]; // Simpan hanya satu gambar terbaru
+        _images = [File(file.path)];
       });
       _saveImageToHive();
     }
@@ -55,24 +66,25 @@ class _MapPageState extends ConsumerState<MapPage> {
     final XFile? image = await _picker.pickImage(source: ImageSource.camera);
     if (image != null) {
       setState(() {
-        _images = [File(image.path)]; // Ganti gambar lama dengan yang baru
+        _images = [File(image.path)];
       });
       _saveImageToHive();
     }
   }
 
+  double calculateDistance(LatLng start, LatLng end) {
+    final Distance distance = Distance();
+    return distance.as(LengthUnit.Kilometer, start, end);
+  }
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Jalankan hanya setelah FlutterMap muncul
-      Future.delayed(Duration(milliseconds: 500), () {
-        if (mounted && _currentLocation != null) {
-          _mapController.move(_currentLocation!, 15.0);
-        }
-      });
-    });
     _initialize();
+    double lat = double.parse(widget.latStart);
+    double long = double.parse(widget.longStart);
+    _destinationLocation = LatLng(lat, long);
+    _getCurrentLocation();
   }
 
   Future<void> _initialize() async {
@@ -113,19 +125,27 @@ class _MapPageState extends ConsumerState<MapPage> {
       }
     }
 
-    Position position = await Geolocator.getCurrentPosition();
-    setState(() {
-      _currentLocation = LatLng(position.latitude, position.longitude);
-    });
+    try {
+      Position position = await Geolocator.getCurrentPosition();
+      final newLocation = LatLng(position.latitude, position.longitude);
 
-    // Pastikan FlutterMap sudah dirender sebelum memindahkan peta
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_mapController.mapEventStream != null) {
-        _mapController.move(_currentLocation!, 15.0);
-      }
-    });
+      setState(() {
+        _currentLocation = newLocation;
+        distance = calculateDistance(_currentLocation!, _destinationLocation!);
+      });
 
-    await getAddressFromLatLng(position.latitude, position.longitude);
+      _moveMapToLocation(newLocation);
+
+      await getAddressFromLatLng(position.latitude, position.longitude);
+    } catch (e) {
+      print("Error getting location: $e");
+    }
+  }
+
+  void _moveMapToLocation(LatLng location) {
+    if (_mapReady && mounted) {
+      _mapController.move(location, 15.0);
+    }
   }
 
   Future<void> getAddressFromLatLng(double lat, double lng) async {
@@ -173,7 +193,7 @@ class _MapPageState extends ConsumerState<MapPage> {
   @override
   Widget build(BuildContext context) {
     String formattedDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
-    _getCurrentLocation();
+
     return isLoading
         ? Scaffold(
             appBar: AppBar(
@@ -229,7 +249,6 @@ class _MapPageState extends ConsumerState<MapPage> {
             ),
             body: Column(
               children: [
-                // PETA
                 Stack(
                   children: [
                     SizedBox(
@@ -240,9 +259,13 @@ class _MapPageState extends ConsumerState<MapPage> {
                               mapController: _mapController,
                               options: MapOptions(
                                 initialZoom: 15.0,
-                                initialCenter: _currentLocation ??
-                                    LatLng(-6.2088,
-                                        106.8456), // Default ke Jakarta
+                                initialCenter: _currentLocation!,
+                                onMapReady: () {
+                                  setState(() {
+                                    _mapReady = true;
+                                  });
+                                  _moveMapToLocation(_currentLocation!);
+                                },
                               ),
                               children: [
                                 TileLayer(
@@ -251,38 +274,109 @@ class _MapPageState extends ConsumerState<MapPage> {
                                   userAgentPackageName:
                                       'dev.fleaflet.flutter_map.example',
                                 ),
-                                if (_currentLocation != null)
-                                  MarkerLayer(
-                                    markers: [
-                                      Marker(
-                                        point: _currentLocation!,
-                                        width: 50,
-                                        height: 50,
-                                        child: const Icon(
-                                          Icons.location_on,
-                                          color: Colors.red,
-                                          size: 40,
-                                        ),
+                                PolylineLayer(
+                                  polylines: [
+                                    Polyline(
+                                      points: [
+                                        _currentLocation!,
+                                        _destinationLocation!,
+                                      ],
+                                      strokeWidth: 4.0,
+                                      color: Colors.red,
+                                    ),
+                                  ],
+                                ),
+                                MarkerLayer(
+                                  markers: [
+                                    Marker(
+                                      point: _currentLocation!,
+                                      width: 50,
+                                      height: 50,
+                                      child: const Icon(
+                                        Icons.location_on,
+                                        color: Colors.red,
+                                        size: 40,
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                    Marker(
+                                      point: _destinationLocation!,
+                                      width: 50,
+                                      height: 50,
+                                      child: const Icon(
+                                        Icons.flag,
+                                        color: Colors.red,
+                                        size: 40,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ],
                             ),
                     ),
                     Positioned(
                       bottom: 10,
                       right: 10,
-                      child: FloatingActionButton(
-                        onPressed: _getCurrentLocation,
-                        backgroundColor: Colors.white,
-                        child:
-                            const Icon(Icons.my_location, color: Colors.blue),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          FloatingActionButton(
+                            heroTag: "currentLocationFab",
+                            onPressed: _getCurrentLocation,
+                            backgroundColor: Colors.white,
+                            child: const Icon(Icons.my_location,
+                                color: Colors.blue),
+                          ),
+                          const SizedBox(height: 10),
+                          FloatingActionButton(
+                            heroTag: "fullScreenMapFab",
+                            onPressed: () {
+                              showGeneralDialog(
+                                context: context,
+                                barrierDismissible: true,
+                                barrierLabel: "Peta",
+                                transitionDuration:
+                                    const Duration(milliseconds: 300),
+                                pageBuilder: (context, anim1, anim2) {
+                                  return FullScreenMapDialog(
+                                    //Use the new Widget
+                                    currentLocation: _currentLocation,
+                                    destinationLocation: _destinationLocation,
+                                  );
+                                },
+                              );
+                            },
+                            backgroundColor: Colors.white,
+                            child: const Icon(Icons.fullscreen,
+                                color: Colors.blue),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-
-                // INFO BOX
+                SizedBox(
+                  height: 20,
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Total Distance',
+                        style: TextStyle(
+                          fontSize: 14,
+                        ),
+                      ),
+                      Text(distance == null
+                          ? "Hitung jarak"
+                          : "${distance!.toStringAsFixed(2)} KM"),
+                    ],
+                  ),
+                ),
+                Divider(
+                  color: Colors.grey,
+                ),
                 Container(
                   padding: const EdgeInsets.all(8),
                   margin: const EdgeInsets.all(20),
@@ -347,8 +441,6 @@ class _MapPageState extends ConsumerState<MapPage> {
                     ),
                   ),
                 ),
-
-                // GALERI FOTO
                 Expanded(
                     child: _images.isEmpty
                         ? const Center(child: Text("Belum ada foto"))
@@ -402,7 +494,7 @@ class _MapPageState extends ConsumerState<MapPage> {
                             nik: 'nik',
                             lampiran: '',
                             tanggal: DateTime.now().toString(),
-                            lokasi: lokasiAktif, // Nama lokasi dari koordinat
+                            lokasi: lokasiAktif,
                             namaOlahraga: widget.sportModel.nama ?? '',
                             totalWaktu: widget.timer,
                             latitude: _currentLocation?.latitude ?? 0.0,
@@ -411,17 +503,14 @@ class _MapPageState extends ConsumerState<MapPage> {
                           );
 
                           final hasInternet = await checkInternetAccess();
-                          print("Internet status: $hasInternet");
 
                           if (!hasInternet) {
-                            print("Menyimpan data secara offline...");
                             await HiveService.saveWorkoutData(sportData);
                             notifikasiLocal('Data disimpan secara offline');
                             context.pushReplacementNamed('home');
                             ref.refresh(homePageProvider.notifier);
                             ref.watch(homePageProvider.notifier).jumpToPage(0);
                           } else {
-                            print("Mengunggah data ke server...");
                             await CoreService(context)
                                 .uploadAktifitas(sportData, context);
                           }
@@ -440,18 +529,113 @@ class _MapPageState extends ConsumerState<MapPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 FloatingActionButton(
-                  heroTag: "btn1",
+                  heroTag: "cameraFab",
                   child: const Icon(Icons.camera_alt, color: Colors.black),
                   onPressed: _pickImage,
                 ),
                 const SizedBox(height: 10),
                 FloatingActionButton(
-                  heroTag: "btn2",
+                  heroTag: "attachmentFab",
                   child: const Icon(Icons.attachment, color: Colors.black),
                   onPressed: _pickAttachment,
                 ),
               ],
             ),
           );
+  }
+}
+
+class FullScreenMapDialog extends StatefulWidget {
+  final LatLng? currentLocation;
+  final LatLng? destinationLocation;
+
+  const FullScreenMapDialog(
+      {Key? key, this.currentLocation, this.destinationLocation})
+      : super(key: key);
+
+  @override
+  State<FullScreenMapDialog> createState() => _FullScreenMapDialogState();
+}
+
+class _FullScreenMapDialogState extends State<FullScreenMapDialog> {
+  late final MapController _dialogMapController;
+
+  @override
+  void initState() {
+    super.initState();
+    _dialogMapController =
+        MapController(); // Separate MapController for the dialog
+    // Move the map to the current location after the dialog is built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.currentLocation != null) {
+        _dialogMapController.move(widget.currentLocation!, 15.0);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _dialogMapController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FlutterMap(
+      mapController: _dialogMapController,
+      options: MapOptions(
+        initialZoom: 15.0,
+        initialCenter: widget.currentLocation ?? LatLng(0, 0),
+        interactionOptions: const InteractionOptions(
+          flags: InteractiveFlag.pinchZoom | InteractiveFlag.drag,
+        ),
+      ),
+      children: [
+        TileLayer(
+          urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+          userAgentPackageName: 'dev.fleaflet.flutter_map.example',
+        ),
+        if (widget.currentLocation != null &&
+            widget.destinationLocation != null)
+          PolylineLayer(
+            polylines: [
+              Polyline(
+                points: [
+                  widget.currentLocation!,
+                  widget.destinationLocation!,
+                ],
+                strokeWidth: 4.0,
+                color: Colors.red,
+              ),
+            ],
+          ),
+        MarkerLayer(
+          markers: [
+            if (widget.currentLocation != null)
+              Marker(
+                point: widget.currentLocation!,
+                width: 50,
+                height: 50,
+                child: const Icon(
+                  Icons.location_on,
+                  color: Colors.red,
+                  size: 40,
+                ),
+              ),
+            if (widget.destinationLocation != null)
+              Marker(
+                point: widget.destinationLocation!,
+                width: 50,
+                height: 50,
+                child: const Icon(
+                  Icons.flag,
+                  color: Colors.red,
+                  size: 40,
+                ),
+              ),
+          ],
+        ),
+      ],
+    );
   }
 }

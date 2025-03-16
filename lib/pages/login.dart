@@ -3,7 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hexcolor/hexcolor.dart';
 import 'package:kpifit/config/colors.dart';
+
 import 'package:kpifit/service/services.dart';
+
+final passwordVisibleProvider = StateProvider<bool>((ref) => false);
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -15,7 +18,7 @@ class LoginPage extends ConsumerStatefulWidget {
 class _LoginPageState extends ConsumerState<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  bool _isPasswordObscure = true;
+  bool _isPasswordObscure = false;
   bool isLoading = false;
   late CoreService coreService;
 
@@ -27,6 +30,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    final oldPasswordVisible = ref.watch(passwordVisibleProvider);
+
     return Scaffold(
       resizeToAvoidBottomInset: true,
       body: Stack(
@@ -109,17 +114,19 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   SizedBox(
                     height: 50,
                     child: TextField(
-                      cursorColor: primaryColor,
                       controller: _passwordController,
-                      obscureText: _isPasswordObscure,
+                      obscureText: !oldPasswordVisible,
                       decoration: InputDecoration(
                         hintText: 'Password',
-                        hintStyle: GoogleFonts.inter(
-                          fontWeight: FontWeight.w400,
-                          textStyle: TextStyle(
-                            fontSize: 14,
-                            color: HexColor('#A5A5A5'),
-                          ),
+                        labelStyle: const TextStyle(color: Colors.black),
+                        suffixIcon: IconButton(
+                          icon: Icon(oldPasswordVisible
+                              ? Icons.visibility
+                              : Icons.visibility_off),
+                          onPressed: () {
+                            ref.read(passwordVisibleProvider.notifier).state =
+                                !oldPasswordVisible;
+                          },
                         ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10.0),
@@ -133,19 +140,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10.0),
                           borderSide: BorderSide(color: primaryColor, width: 1),
-                        ),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            color: Colors.grey,
-                            _isPasswordObscure
-                                ? Icons.visibility
-                                : Icons.visibility_off,
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              _isPasswordObscure = !_isPasswordObscure;
-                            });
-                          },
                         ),
                       ),
                     ),

@@ -105,18 +105,20 @@ final GoRouter router = GoRouter(initialLocation: '/', routes: <RouteBase>[
           },
           routes: <RouteBase>[
             GoRoute(
-              path: '/map',
-              name: 'map',
-              builder: (BuildContext context, GoRouterState state) {
-                SportModel sportModel =
-                    state.extra as SportModel; // 👈 casting is important
+                path: '/map',
+                name: 'map',
+                builder: (BuildContext context, GoRouterState state) {
+                  SportModel sportModel =
+                      state.extra as SportModel; // 👈 casting is important
 
-                return MapPage(
-                  timer: state.uri.queryParameters['timer']!,
-                  sportModel: sportModel,
-                );
-              },
-            ),
+                  return MapPage(
+                    latStart: state.uri.queryParameters['lat']!,
+                    longStart: state.uri.queryParameters['long']!,
+                    timer: state.uri.queryParameters['timer']!,
+                    sportModel: sportModel,
+                  );
+                },
+                routes: <RouteBase>[]),
           ]),
     ],
   ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kpifit/models/olahraga.dart';
 import 'package:kpifit/util/widget_appbar.dart';
@@ -25,6 +26,8 @@ class StopWatchPageState extends State<StopWatchPage> {
   }
 
   String? timer;
+  double lat = 0;
+  double long = 0;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -78,9 +81,16 @@ class StopWatchPageState extends State<StopWatchPage> {
                   IconButton(
                     icon: const Icon(Icons.play_arrow,
                         size: 40, color: Colors.blue),
-                    onPressed: () {
+                    onPressed: () async {
+                      Position position = await Geolocator.getCurrentPosition(
+                        desiredAccuracy: LocationAccuracy.high,
+                      );
+
                       _stopWatchTimer.onStartTimer();
+
                       setState(() {
+                        lat = position.latitude;
+                        long = position.longitude;
                         _isRunning = true;
                         _isStopped = false;
                       });
@@ -116,8 +126,14 @@ class StopWatchPageState extends State<StopWatchPage> {
                     icon: const Icon(Icons.stop, size: 40, color: Colors.red),
                     onPressed: () {
                       _stopWatchTimer.onStopTimer();
+                      print(lat.toString());
+                      print(long.toString());
                       context.pushReplacementNamed('map',
-                          queryParameters: {'timer': timer},
+                          queryParameters: {
+                            'timer': timer,
+                            'lat': lat.toString(),
+                            'long': long.toString()
+                          },
                           extra: widget.sportModel);
                     },
                   ),
